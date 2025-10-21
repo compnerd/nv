@@ -9,6 +9,7 @@ private struct Event {
     case end
   }
 
+  let target: String
   let kind: Kind
   let time: TimeInterval
 }
@@ -38,8 +39,8 @@ extension BuildStatistics {
       durations.append(duration)
       targets.append(BuildStatistics.Target(entry.target, duration))
 
-      events.append(Event(kind: .start, time: entry.start))
-      events.append(Event(kind: .end, time: entry.end))
+      events.append(Event(target: entry.target, kind: .start, time: entry.start))
+      events.append(Event(target: entry.target, kind: .end, time: entry.end))
 
       cputime += duration
       time.min = min(time.min, entry.start)
@@ -85,7 +86,8 @@ extension BuildStatistics {
                                    p95: durations[min(Int(Double(count) * 0.95), count - 1)],
                                    dispersion: .seconds(sqrt(variance))),
                            targets: count,
-                           time: (cpu: cputime, wall: walltime))
+                           time: (cpu: cputime, wall: walltime),
+                           execution: (start: time.min, end: time.max))
   }
 }
 

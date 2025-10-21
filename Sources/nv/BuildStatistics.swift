@@ -11,6 +11,7 @@ internal struct BuildStatistics {
   let stats: (min: Duration, max: Duration, average: Duration, median: Duration, p95: Duration, dispersion: Duration)
   let targets: Int
   let time: (cpu: Duration, wall: Duration)
+  let execution: (start: TimeInterval, end: TimeInterval)
 }
 
 extension BuildStatistics {
@@ -20,6 +21,7 @@ extension BuildStatistics {
                     stats: (min: .zero, max: .zero, average: .zero,
                             median: .zero, p95: .zero, dispersion: .zero),
                     targets: 0,
-                    time: (cpu: .zero, wall: .zero))
+                    time: (cpu: .zero, wall: .zero),
+                    execution: (start: 0, end: 0))
   }
 }
