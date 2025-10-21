@@ -5,7 +5,7 @@ import PackageDescription
 let _ =
     Package(name: "nv",
             platforms: [
-              .macOS(.v15),
+              .macOS(.v26),
             ],
             products: [
               .executable(name: "nv", targets: ["nv"]),
