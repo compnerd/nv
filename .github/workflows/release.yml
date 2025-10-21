@@ -15,7 +15,7 @@ permissions:
   attestations: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
 
     steps:
@@ -79,3 +79,46 @@ jobs:
         with:
           name: windows-x86_64
           path: ${{ github.workspace }}/SourceCache/nv/.build/x86_64-unknown-windows-msvc/release/nv.exe
+
+  build-macos:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}/SourceCache/nv
+
+      - working-directory: ${{ github.workspace }}/SourceCache/nv
+        run: |
+          swift build -c release
+
+      - uses: anchore/sbom-action@v0
+        with:
+          dependency-snapshot: true
+          path: ${{ github.workspace }}/SourceCache/nv
+          output-file: sbom.spdx.json
+
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            ${{ github.workspace }}/SourceCache/nv/.build/arm64-apple-macosx/release/nv
+
+      - uses: actions/attest-sbom@v3
+        with:
+          subject-path: |
+            ${{ github.workspace }}/SourceCache/nv/.build/arm64-apple-macosx/release/nv
+          sbom-path: sbom.spdx.json
+
+      - if: github.ref_type == 'tag'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp "${{ github.workspace }}/SourceCache/nv/.build/arm64-apple-macosx/release/nv" nv-arm64
+
+          gh release upload ${{ github.ref_name }} "nv-arm64#macOS ARM64" -R ${{ github.repository }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macosx-arm64
+          path: ${{ github.workspace }}/SourceCache/nv/.build/arm64-apple-macosx/release/nv
