@@ -181,7 +181,7 @@ internal struct VisualizeCommand: ParsableCommand {
     process.arguments = ["shell32.dll,ShellExec_RunDLL", temporary.absoluteString]
     try process.run()
 #else
-    print(temporary)
+    print("Generated visualization at: \(temporary.path)")
 #endif
   }
 }
