@@ -9,7 +9,11 @@ internal struct NV: ParsableCommand {
   static var configuration: CommandConfiguration {
     CommandConfiguration(commandName: "nv",
                          abstract: "Ninja build log analyzer",
-                         subcommands: [AnalyzeCommand.self, StatsCommand.self],
+                         subcommands: [
+                           AnalyzeCommand.self,
+                           StatsCommand.self,
+                           VisualizeCommand.self,
+                         ],
                          defaultSubcommand: AnalyzeCommand.self)
   }
 

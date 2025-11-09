@@ -18,6 +18,10 @@ let _ =
                        from: "1.6.0"),
               .package(url: "https://github.com/compnerd/swift-platform-core", branch: "main",
                        traits: [.trait(name: "GNU", condition: .when(traits: ["GNU"]))]),
+              .package(url: "https://github.com/AlwaysRightInstitute/Mustache",
+                       from: "1.0.2"),
+              .package(url: "https://github.com/apple/swift-collections",
+                       from: "1.3.0"),
             ],
             targets: [
               .executableTarget(name: "nv", dependencies: [
@@ -26,5 +30,9 @@ let _ =
                          condition: .when(platforms: [.windows])),
                 .product(name: "POSIXCore", package: "swift-platform-core",
                          condition: .when(platforms: [.linux, .macOS])),
+                .product(name: "Mustache", package: "Mustache"),
+                .product(name: "HeapModule", package: "swift-collections"),
+              ], resources: [
+                .process("Resources"),
               ]),
             ])
