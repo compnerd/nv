@@ -19,7 +19,7 @@ let _ =
               .package(url: "https://github.com/compnerd/swift-platform-core", branch: "main",
                        traits: [.trait(name: "GNU", condition: .when(traits: ["GNU"]))]),
               .package(url: "https://github.com/AlwaysRightInstitute/Mustache",
-                       from: "1.0.2"),
+                       from: "1.0.4"),
               .package(url: "https://github.com/apple/swift-collections",
                        from: "1.3.0"),
             ],
