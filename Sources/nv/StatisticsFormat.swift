@@ -15,6 +15,14 @@ extension StatisticsFormat {
   internal func output(statistics: borrowing BuildStatistics) throws {
     switch self {
     case .detailed:
+      let fraction = statistics.time.wall == .zero
+          ? 0.0 : statistics.time.serial / statistics.time.wall
+      var slowest = Array<String>()
+      // TODO: replace with for-in once InlineArray conforms to Iterable (Swift 6.4)
+      for index in statistics.slowest.indices {
+        guard let target = statistics.slowest[index] else { break }
+        slowest.append("  \(target.target) (\(target.duration.formatted(kTimeFormat)))")
+      }
       print("""
       Build Statistics Summary:
       =========================
@@ -27,21 +35,16 @@ extension StatisticsFormat {
       Maximum build time:  \(statistics.stats.max.formatted(kTimeFormat))
       CPU time:            \(statistics.time.cpu.formatted(kTimeFormat))
       Wall time:           \(statistics.time.wall.formatted(kTimeFormat))
+      Serial time:         \(statistics.time.serial.formatted(kTimeFormat)) (\(String(format: "%.1f%%", fraction * 100)) of wall)
 
       Slowest targets:
-      \(statistics.outliers.slowest.map { build in
-          "  \(build.target) (\(build.duration.formatted(kTimeFormat)))"
-        }.joined(separator: "\n"))
-
-      Fastest targets:
-      \(statistics.outliers.fastest.map { build in
-          "  \(build.target) (\(build.duration.formatted(kTimeFormat)))"
-      }.joined(separator: "\n"))
+      \(slowest.joined(separator: "\n"))
 
       Parallelization Analysis:
       =========================
-      Estimated cores used: \(statistics.parallelism.cores)
-      Parallelization efficiency: \(String(format: "%.2f%%", statistics.parallelism.efficiency * 100))
+      Peak concurrency:     \(statistics.parallelism.peak) concurrent jobs
+      Average occupancy:    \(String(format: "%.1f", statistics.parallelism.occupancy)) concurrent jobs
+      Parallelization efficiency: \(String(format: "%.1f%%", statistics.parallelism.efficiency * 100))
       """)
 
     case .brief:
