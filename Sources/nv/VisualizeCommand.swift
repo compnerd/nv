@@ -7,7 +7,7 @@ import Foundation
 import Mustache
 import HeapModule
 
-private struct BuildTask {
+internal struct BuildTask {
   public let id: Int
   public let target: String
   public let lane: Int
@@ -15,7 +15,7 @@ private struct BuildTask {
   public let end: Double
 }
 
-private struct BuildLane {
+internal struct BuildLane {
   public let id: Int
   public var description: String
 }
@@ -46,7 +46,7 @@ extension Event: Comparable {
 }
 
 extension Collection where Element: NinjaLogEntry {
-  fileprivate var tasks: ([BuildTask], [BuildLane]) {
+  internal var tasks: ([BuildTask], [BuildLane]) {
     var events: [Event] = []
     events.reserveCapacity(self.count * 2)
 

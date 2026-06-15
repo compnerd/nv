@@ -14,18 +14,6 @@ internal protocol NinjaLogEntryEncoder {
       where Entries.Element: NinjaLogEntry
 }
 
-extension Data {
-  fileprivate mutating func write(row fields: borrowing Span<String>) {
-    for index in 0 ..< fields.count {
-      append(contentsOf: fields[index].utf8)
-      if index < fields.count - 1 {
-        append(UInt8(ascii: ","))
-      }
-    }
-    append(UInt8(ascii: "\n"))
-  }
-}
-
 private struct EntryCollection<C: Collection>: Encodable where C.Element: Encodable {
   let base: C
   func encode(to encoder: Encoder) throws {
@@ -45,12 +33,22 @@ internal struct CSVEncoder: NinjaLogEntryEncoder {
     return field
   }
 
+  private static func write(row fields: borrowing Span<String>, to data: inout Data) {
+    for index in 0 ..< fields.count {
+      data.append(contentsOf: fields[index].utf8)
+      if index < fields.count - 1 {
+        data.append(UInt8(ascii: ","))
+      }
+    }
+    data.append(UInt8(ascii: "\n"))
+  }
+
   internal static func encode<Entries: Collection>(_ entries: borrowing Entries) throws -> Data
       where Entries.Element: NinjaLogEntry {
     var data = Data()
     data.reserveCapacity(SystemInfo.PageSize)
 
-    data.write(row: headers.span)
+    write(row: headers.span, to: &data)
     for entry in copy entries {
       let row: InlineArray<_, String> = [
         escape(entry.target),
@@ -59,7 +57,7 @@ internal struct CSVEncoder: NinjaLogEntryEncoder {
         String(Int64(entry.duration.seconds * 1000)),
         escape((entry as? NinjaLogVersion6.BuildEntry)?.hash ?? ""),
       ]
-      data.write(row: row.span)
+      write(row: row.span, to: &data)
     }
 
     return data
