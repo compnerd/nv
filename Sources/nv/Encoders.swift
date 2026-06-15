@@ -10,21 +10,33 @@ import POSIXCore
 #endif
 
 internal protocol NinjaLogEntryEncoder {
-  static func encode<Entries: Collection>(_ entries: Entries) throws -> Data
+  static func encode<Entries: Collection>(_ entries: borrowing Entries) throws -> Data
       where Entries.Element: NinjaLogEntry
 }
 
 extension Data {
-  fileprivate mutating func write(row fields: [String]) {
-    let line = fields.joined(separator: ",") + "\n"
-    append(contentsOf: line.utf8)
+  fileprivate mutating func write(row fields: borrowing Span<String>) {
+    for index in 0 ..< fields.count {
+      append(contentsOf: fields[index].utf8)
+      if index < fields.count - 1 {
+        append(UInt8(ascii: ","))
+      }
+    }
+    append(UInt8(ascii: "\n"))
+  }
+}
+
+private struct EntryCollection<C: Collection>: Encodable where C.Element: Encodable {
+  let base: C
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.unkeyedContainer()
+    for element in base { try container.encode(element) }
   }
 }
 
 internal struct CSVEncoder: NinjaLogEntryEncoder {
-  private static var headers: [String] {
-    ["target", "start", "end", "duration (ms)", "hash"]
-  }
+  private static let headers: InlineArray<_, String> =
+      ["target", "start", "end", "duration (ms)", "hash"]
 
   private static func escape(_ field: String) -> String {
     if field.contains(",") || field.contains("\"") || field.contains("\n") {
@@ -33,20 +45,21 @@ internal struct CSVEncoder: NinjaLogEntryEncoder {
     return field
   }
 
-  internal static func encode<Entries: Collection>(_ entries: Entries) throws -> Data
+  internal static func encode<Entries: Collection>(_ entries: borrowing Entries) throws -> Data
       where Entries.Element: NinjaLogEntry {
     var data = Data()
     data.reserveCapacity(SystemInfo.PageSize)
 
-    data.write(row: headers)
-    for entry in entries {
-      data.write(row: [
+    data.write(row: headers.span)
+    for entry in copy entries {
+      let row: InlineArray<_, String> = [
         escape(entry.target),
         String(entry.start),
         String(entry.end),
-        String(entry.duration.components.seconds * 1000),
+        String(Int64(entry.duration.seconds * 1000)),
         escape((entry as? NinjaLogVersion6.BuildEntry)?.hash ?? ""),
-      ])
+      ]
+      data.write(row: row.span)
     }
 
     return data
@@ -54,29 +67,32 @@ internal struct CSVEncoder: NinjaLogEntryEncoder {
 }
 
 internal struct PrettyPrintedEncoder: NinjaLogEntryEncoder {
-  private static var style: Duration.UnitsFormatStyle {
-    .units(allowed: [.hours, .minutes, .seconds, .milliseconds])
-  }
+  private static let style: Duration.UnitsFormatStyle =
+      .units(allowed: [.hours, .minutes, .seconds, .milliseconds])
 
-  internal static func encode<Entries: Collection>(_ entries: Entries) throws -> Data
+  internal static func encode<Entries: Collection>(_ entries: borrowing Entries) throws -> Data
       where Entries.Element: NinjaLogEntry {
     var data = Data()
     data.reserveCapacity(SystemInfo.PageSize)
 
-    for entry in entries {
-      let line = "\(entry.target) (\(entry.duration.formatted(style)))\n"
-      data.append(contentsOf: line.utf8)
+    for entry in copy entries {
+      data.append(contentsOf: entry.target.utf8)
+      data.append(UInt8(ascii: " "))
+      data.append(UInt8(ascii: "("))
+      data.append(contentsOf: entry.duration.formatted(style).utf8)
+      data.append(UInt8(ascii: ")"))
+      data.append(UInt8(ascii: "\n"))
     }
     return data
   }
 }
 
 internal struct LogEntryJSONEncoder: NinjaLogEntryEncoder {
-  internal static func encode<Entries: Collection>(_ entries: Entries) throws -> Data
+  internal static func encode<Entries: Collection>(_ entries: borrowing Entries) throws -> Data
       where Entries.Element: NinjaLogEntry {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     encoder.dateEncodingStrategy = .secondsSince1970
-    return try encoder.encode(Array(entries))
+    return try encoder.encode(EntryCollection(base: copy entries))
   }
 }

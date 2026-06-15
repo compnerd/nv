@@ -22,26 +22,27 @@ extension NinjaLogVersion6 {
       try container.encode(hash, forKey: .hash)
     }
 
-    internal init(_ line: String, base time: TimeInterval) throws {
+    @inline(__always)
+    internal init(_ line: consuming String, base time: TimeInterval) throws {
       /// start time (ms) [base], end time (ms) [base], restat mtime (ms) [epoch] (0 = none), path, hash (command murmur2)
-      let components = line.split(separator: "\t")
-      guard components.count == 5 else {
-        throw NVError.Parser
-      }
+      var rest = line[...]
 
-      guard let start = TimeInterval(components[0]) else {
-        throw NVError.Parser
-      }
+      guard let t0 = rest.firstIndex(of: "\t") else { throw NVError.Parser }
+      guard let start = TimeInterval(rest[..<t0]) else { throw NVError.Parser }
       self.start = (start / 1000.0) + time
+      rest = rest[rest.index(after: t0)...]
 
-      guard let end = TimeInterval(components[1]) else {
-        throw NVError.Parser
-      }
+      guard let t1 = rest.firstIndex(of: "\t") else { throw NVError.Parser }
+      guard let end = TimeInterval(rest[..<t1]) else { throw NVError.Parser }
       self.end = (end / 1000.0) + time
+      rest = rest[rest.index(after: t1)...]
 
-      // restat is ignored
-      self.target = String(components[3])
-      self.hash = String(components[4])
+      guard let t2 = rest.firstIndex(of: "\t") else { throw NVError.Parser }
+      rest = rest[rest.index(after: t2)...]
+
+      guard let t3 = rest.firstIndex(of: "\t") else { throw NVError.Parser }
+      self.target = String(rest[..<t3])
+      self.hash = String(rest[rest.index(after: t3)...])
     }
   }
 }
@@ -62,12 +63,13 @@ internal struct NinjaLogVersion6: NinjaLog {
   internal let entries: [BuildEntry]
 
   internal init(parse lines: inout NinjaLogIterator, base time: TimeInterval) {
-    let entries: [BuildEntry] = lines.compactMap {
-      guard !$0.isEmpty, !$0.starts(with: /#/) else { return nil }
-      return try? BuildEntry($0, base: time)
+    var seen = Set<String>()
+    var entries = Array<BuildEntry>()
+    for line in lines {
+      if line.isEmpty || line.first == "#" { continue }
+      guard let entry = try? BuildEntry(line, base: time) else { continue }
+      if seen.insert(entry.hash).inserted { entries.append(entry) }
     }
-
-    var seen = Set<BuildEntry>()
-    self.entries = entries.compactMap { seen.insert($0).inserted ? $0 : nil }
+    self.entries = entries
   }
 }
