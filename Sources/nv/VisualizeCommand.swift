@@ -47,6 +47,7 @@ extension Event: Comparable {
 
 extension Collection where Element: NinjaLogEntry {
   internal var tasks: ([BuildTask], [BuildLane]) {
+    guard !self.isEmpty else { return ([], []) }
     var events: [Event] = []
     events.reserveCapacity(self.count * 2)
 
