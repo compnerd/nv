@@ -8,12 +8,11 @@ internal enum StatisticsFormat: String, CaseIterable, ExpressibleByArgument {
   case brief
 }
 
-private var kTimeFormat: Duration.UnitsFormatStyle {
-  .units(allowed: [.hours, .minutes, .seconds, .milliseconds])
-}
+private let kTimeFormat: Duration.UnitsFormatStyle =
+    .units(allowed: [.hours, .minutes, .seconds, .milliseconds])
 
 extension StatisticsFormat {
-  internal func output(statistics: BuildStatistics) throws {
+  internal func output(statistics: borrowing BuildStatistics) throws {
     switch self {
     case .detailed:
       print("""

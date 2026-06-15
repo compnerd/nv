@@ -26,7 +26,9 @@ internal struct AnalyzeCommand: ParsableCommand {
 
   public func run() throws {
     let file = try NinjaLogParser.load(at: command.logfile)
-    let entries = file.entries.sorted(by: { sort ? $0.duration > $1.duration : true })
+    let entries = sort
+      ? file.entries.sorted { $0.duration > $1.duration }
+      : file.entries
     try format.output(entries: entries, to: output)
   }
 }

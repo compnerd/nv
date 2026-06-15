@@ -16,6 +16,7 @@ internal protocol NinjaLogEntry: Encodable {
 }
 
 extension NinjaLogEntry {
+  @inline(__always)
   var duration: Duration { .seconds(self.end - self.start) }
 }
 
@@ -26,7 +27,7 @@ internal protocol NinjaLog {
 }
 
 internal enum NinjaLogParser {
-  internal static func load(at url: URL) throws -> some NinjaLog {
+  internal static func load(at url: consuming URL) throws -> some NinjaLog {
     let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
     guard let mtime = (attributes[.modificationDate] as? Date)?.timeIntervalSince1970 else {
       throw NVError.IO
@@ -51,16 +52,16 @@ internal enum NinjaLogParser {
 }
 
 internal struct NinjaLogIterator: IteratorProtocol, Sequence {
-  private static let delimiter = Data([0x0a])
+  private static let delimiter = UInt8(ascii: "\n")
   private static let chunkSize = SystemInfo.PageSize
 
   private let handle: FileHandle
-  private var buffer: Data
+  private var buffer: Array<UInt8>
   private var exhausted: Bool
 
-  internal init(at: URL) throws {
-    self.handle = try FileHandle(forReadingFrom: at)
-    self.buffer = Data()
+  internal init(at url: consuming URL) throws {
+    self.handle = try FileHandle(forReadingFrom: url)
+    self.buffer = []
     self.exhausted = false
   }
 
@@ -68,23 +69,28 @@ internal struct NinjaLogIterator: IteratorProtocol, Sequence {
     guard !self.exhausted else { return nil }
 
     while true {
-      if let range = buffer.range(of: Self.delimiter) {
-        let data = buffer.subdata(in: buffer.startIndex ..< range.lowerBound)
-        buffer.removeSubrange(buffer.startIndex ..< range.upperBound)
-        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      if let index = buffer.firstIndex(of: NinjaLogIterator.delimiter) {
+        var line = buffer.withUnsafeBufferPointer { buffer in
+          String(UnsafeBufferPointer(start: buffer.baseAddress, count: index).span)
+        }
+        buffer.removeSubrange(..<(index + 1))
+        if line.last == "\r" { line.removeLast() }
+        return line
       }
 
-      let chunk = handle.readData(ofLength: Self.chunkSize)
+      let chunk = handle.readData(ofLength: NinjaLogIterator.chunkSize)
       if chunk.isEmpty {
         exhausted = true
-        if !buffer.isEmpty, let line = String(data: buffer, encoding: .utf8) {
-          buffer.removeAll()
-          return line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !buffer.isEmpty else { return nil }
+        var line = buffer.withUnsafeBufferPointer { buffer in
+          String(buffer.span)
         }
-        return nil
+        buffer.removeAll(keepingCapacity: false)
+        if line.last == "\r" { line.removeLast() }
+        return line.isEmpty ? nil : line
       }
 
-      buffer.append(chunk)
+      buffer.append(contentsOf: chunk)
     }
   }
 }

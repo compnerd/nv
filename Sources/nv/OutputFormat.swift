@@ -11,7 +11,7 @@ internal enum OutputFormat: String, CaseIterable, ExpressibleByArgument {
 }
 
 extension OutputFormat {
-  internal func output(entries: [some NinjaLogEntry], to path: String) throws {
+  internal func output(entries: borrowing [some NinjaLogEntry], to path: String) throws {
     let data = switch self {
     case .console:
       try PrettyPrintedEncoder.encode(entries)
@@ -21,14 +21,10 @@ extension OutputFormat {
       try CSVEncoder.encode(entries)
     }
 
-    guard let content = String(data: data, encoding: .utf8) else {
-      throw NVError.Encoder
-    }
-
     if path == "-" {
-      print(content, terminator: "")
+      FileHandle.standardOutput.write(data)
     } else {
-      try content.write(toFile: path, atomically: true, encoding: .utf8)
+      try data.write(to: URL(fileURLWithPath: path), options: .atomic)
     }
   }
 }
