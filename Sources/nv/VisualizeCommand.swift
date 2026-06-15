@@ -126,11 +126,22 @@ internal struct VisualizeCommand: ParsableCommand {
     let kTimeStyle =
         Duration.UnitsFormatStyle(allowedUnits: [.hours, .minutes, .seconds],
                                   width: .abbreviated)
+    var bottlenecks = Array<Dictionary<String, Any>>()
+    // TODO: replace with for-in once InlineArray conforms to Iterable (Swift 6.4)
+    for index in statistics.slowest.indices {
+      guard let task = statistics.slowest[index] else { break }
+      bottlenecks.append([
+        "rank": index + 1,
+        "target": URL(fileURLWithPath: task.target).lastPathComponent,
+        "full_target": task.target,
+        "duration": task.duration.formatted(kTimeStyle),
+      ])
+    }
     try template().render(object: [
       "targets": entries.count,
       "wall_time": statistics.time.wall.formatted(kTimeStyle),
       "cpu_time": statistics.time.cpu.formatted(kTimeStyle),
-      "core_count": statistics.parallelism.cores,
+      "peak_concurrency": statistics.parallelism.peak,
       "efficiency": String(format: "%.2f%%",
                            statistics.parallelism.efficiency * 100.0),
       "average_time": statistics.stats.average.formatted(kTimeStyle),
@@ -150,14 +161,7 @@ internal struct VisualizeCommand: ParsableCommand {
           "duration": task.end - task.start,
         ]
       },
-      "bottlenecks": statistics.outliers.slowest.enumerated().map { index, task in
-        [
-          "rank": index + 1,
-          "target": URL(fileURLWithPath: task.target).lastPathComponent,
-          "full_target": task.target,
-          "duration": task.duration.formatted(kTimeStyle),
-        ]
-      },
+      "bottlenecks": bottlenecks,
       "min_time": statistics.execution.start * 1000,
       "max_time": statistics.execution.end * 1000,
     ]).data(using: .utf8)?.write(to: temporary, options: .atomic)

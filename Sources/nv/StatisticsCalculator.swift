@@ -47,7 +47,6 @@ private func calculate<Entries: Collection>(from entries: borrowing Entries)
 
   let walltime = Duration.seconds(time.max - time.min)
   let average = cputime / Double(count)
-  let efficiency = walltime == .zero ? 0.0 : cputime / walltime
 
   // In-place sort avoids allocating a second sorted array.
   events.sort { lhs, rhs in
@@ -55,36 +54,57 @@ private func calculate<Entries: Collection>(from entries: borrowing Entries)
       ? (lhs.kind == .end && rhs.kind == .start)
       : lhs.time < rhs.time
   }
-  let width = events.reduce(into: (current: 0, max: 0)) { width, event in
-    width.current += event.kind == .start ? 1 : -1
-    width.max = max(width.max, width.current)
-  }.max
+
+  // Single sweep: compute peak concurrency and the total time spent at
+  // concurrency == 1 (serial time). Serial time directly measures how much
+  // of the build was forced to run with a single target, which indicates
+  // dependency bottlenecks that extra parallelism cannot address.
+  var concurrency = 0
+  var peak = 0
+  var serial = Duration.zero
+  var cursor = time.min
+
+  for event in events {
+    if concurrency == 1 { serial += .seconds(event.time - cursor) }
+    cursor = event.time
+    concurrency += event.kind == .start ? 1 : -1
+    if concurrency > peak { peak = concurrency }
+  }
+  if concurrency == 1 { serial += .seconds(time.max - cursor) }
+  let occupancy = walltime == .zero ? 0.0 : cputime / walltime
+  let efficiency = peak == 0 ? 0.0 : occupancy / Double(peak)
 
   // Sort targets ascending to derive all statistical values from a single array,
   // eliminating the separate durations array and its associated sort.
   targets.sort { $0.duration < $1.duration }
 
-  let mean = Double(average.components.seconds)
+  // Use full attosecond precision when computing variance; truncating to whole
+  // seconds produces meaningless results for sub-second targets.
+  let mean = average.seconds
   var variance = 0.0
   for target in targets {
-    let difference = Double(target.duration.components.seconds) - mean
+    let difference = target.duration.seconds - mean
     variance += difference * difference
   }
   variance /= Double(count)
 
-  let n = min(5, count)
-  return BuildStatistics(outliers: (fastest: Array(targets.prefix(n)),
-                                    slowest: Array(targets.suffix(n).reversed())),
-                          parallelism: (cores: width, efficiency: efficiency),
-                          stats: (min: targets.first!.duration,
-                                  max: targets.last!.duration,
-                                  average: average,
-                                  median: targets[count / 2].duration,
-                                  p95: targets[min(Int(Double(count) * 0.95), count - 1)].duration,
-                                  dispersion: .seconds(sqrt(variance))),
-                          targets: count,
-                          time: (cpu: cputime, wall: walltime),
-                          execution: (start: time.min, end: time.max))
+  var slowest = InlineArray<5, BuildStatistics.Target?>(repeating: nil)
+  for (index, target) in targets.suffix(5).reversed().enumerated() {
+    slowest[index] = target
+  }
+
+  let p95 = min(Int(Double(count) * 0.95), count - 1)
+  return BuildStatistics(slowest: slowest,
+                         parallelism: (peak: peak, occupancy: occupancy, efficiency: efficiency),
+                         stats: (min: targets.first!.duration,
+                                 max: targets.last!.duration,
+                                 average: average,
+                                 median: targets[count / 2].duration,
+                                 p95: targets[p95].duration,
+                                 dispersion: .seconds(sqrt(variance))),
+                         targets: count,
+                         time: (cpu: cputime, wall: walltime, serial: serial),
+                         execution: (start: time.min, end: time.max))
 }
 
 extension Collection where Element: NinjaLogEntry {
