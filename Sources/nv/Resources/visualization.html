@@ -1,472 +1,425 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Build Visualization</title>
-
-  <!-- bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
-
-  <!-- Visualization Library -->
+  <title>Build Report · nv</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
-
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #090d17;
+      --surface:    #0e1422;
+      --surface-hi: #141929;
+      --border:     rgba(255,255,255,0.07);
+      --border-hi:  rgba(255,255,255,0.13);
+      --text-1:     #dde1ee;
+      --text-2:     #7880a0;
+      --text-3:     #3f4560;
+      --accent:     #4d7fff;
+      --accent-dim: rgba(77,127,255,0.15);
+      --amber:      #f5a020;
+      --radius:     3px;
+      --font-sans:  'Inter', system-ui, sans-serif;
+      --font-mono:  'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    }
+
+    html { font-size: 16px; }
+
     body {
-      background: #0f172a;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      line-height: 1.5;
       min-height: 100vh;
-      color: white;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .navbar {
-      background: rgba(15, 23, 42, 0.95) !important;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .navbar-brand {
-      color: white !important;
-      font-weight: 600;
-      font-size: 1.25rem;
-    }
-
-    small.text-light {
-      color: rgba(148, 163, 184, 0.8) !important;
-      font-size: 0.85rem;
-    }
-
-    .stat-card {
-      transition: transform 0.2s ease;
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .stat-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .stat-card .card-title {
-      color: rgba(148, 163, 184, 0.9);
-      font-weight: 500;
-      font-size: 0.9rem;
-    }
-
-    .card {
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .card-header {
-      background: linear-gradient(135deg, #3b82f6, #10b981);
-      color: white;
-      border-radius: 12px 12px 0 0;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.3);
-    }
-
-    .card-header h4 {
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
-
-    .card-header small {
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 0.85rem;
-    }
-
-    .card-body {
-      background: rgba(15, 23, 42, 0.7);
-      color: white;
-    }
-
-    h2 {
-      color: white;
-      font-weight: 600;
-    }
-
-    .text-primary {
-      color: #60a5fa !important;
-    }
-
-    .text-success {
-      color: #34d399 !important;
-    }
-
-    .text-info {
-      color: #38bdf8 !important;
-    }
-
-    .text-secondary {
-      color: #94a3b8 !important;
-    }
-
-    .text-warning {
-      color: #fbbf24 !important;
-    }
-
-    .text-danger {
-      color: #f87171 !important;
-    }
-
-    .text-dark {
-      color: #e2e8f0 !important;
-    }
-
-    .text-muted {
-      color: #94a3b8 !important;
-    }
-
-    .hover-tooltip {
-      position: fixed;
-      background: linear-gradient(135deg, #3b82f6, #10b981);
-      color: white;
-      padding: 16px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      min-width: 280px;
-      max-width: 400px;
-      z-index: 1100;
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.15s ease;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .hover-tooltip.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .tooltip-header {
+    /* ── Header ─────────────────────────────────────────── */
+    .site-header {
       display: flex;
       align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      gap: 0.75rem;
+      padding: 0 2rem;
+      height: 44px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
 
-    .tooltip-icon {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 6px;
-      padding: 6px;
-      margin-right: 10px;
-    }
-
-    .tooltip-title {
-      font-weight: 600;
-      line-height: 1.3;
-      word-break: break-word;
-    }
-
-    .tooltip-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-
-    .tooltip-item {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 6px;
-      padding: 8px;
-    }
-
-    .tooltip-label {
-      color: rgba(255, 255, 255, 0.9);
+    .brand {
+      font-family: var(--font-mono);
       font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      background: var(--accent-dim);
+      border: 1px solid rgba(77,127,255,0.28);
+      border-radius: var(--radius);
+      padding: 0.1875rem 0.5rem;
+    }
+
+    .header-label {
+      font-size: 0.8125rem;
       font-weight: 500;
-      margin-bottom: 4px;
+      color: var(--text-2);
     }
 
-    .tooltip-value {
-      color: white;
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 0.85rem;
+    /* ── Metrics rail ────────────────────────────────────── */
+    .metrics-rail {
+      display: flex;
+      align-items: stretch;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .metrics-rail::-webkit-scrollbar { display: none; }
+
+    .metric {
+      flex: 1;
+      min-width: 160px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      position: relative;
+    }
+
+    .metric + .metric::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 22%;
+      height: 56%;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .metric-label {
+      font-size: 0.5625rem;
       font-weight: 600;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--text-3);
     }
 
-    .tooltip-full-path {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .tooltip-full-path .tooltip-value {
-      font-size: 0.8rem;
-      line-height: 1.4;
-      word-break: break-all;
-      white-space: pre-wrap;
-    }
-
-    @media (max-width: 768px) {
-      .hover-tooltip {
-        min-width: 250px;
-        max-width: 90vw;
-        font-size: 0.85rem;
-      }
-
-      .tooltip-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-    }
-
-    .table {
-      background: rgba(15, 23, 42, 0.9);
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      color: white;
-      margin-bottom: 0;
-    }
-
-    .table thead th {
-      background: rgba(15, 23, 42, 0.95);
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 1rem;
       font-weight: 600;
-      padding: 1rem 0.75rem;
-      border: none;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.3);
-      color: white;
+      color: var(--text-1);
+      line-height: 1.25;
     }
 
-    .table tbody td,
-    .table tbody th {
-      padding: 0.75rem;
-      vertical-align: middle;
-      background: rgba(15, 23, 42, 0.8);
-      border: none;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-      color: white;
+    /* ── Page body ───────────────────────────────────────── */
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
     }
 
-    .table tbody tr:hover td,
-    .table tbody tr:hover th {
-      background: rgba(59, 130, 246, 0.2);
+    /* ── Section label ───────────────────────────────────── */
+    .section-label {
+      font-size: 0.5625rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 0.625rem;
     }
 
-    .table tbody tr:last-child td,
-    .table tbody tr:last-child th {
-      border-bottom: none;
+    /* ── Panel ───────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
     }
 
-    .table-striped tbody tr:nth-of-type(odd) td,
-    .table-striped tbody tr:nth-of-type(odd) th {
-      background: rgba(15, 23, 42, 0.85);
-    }
+    /* Clips table rows to the panel's border-radius. Not applied to the
+       timeline panel — vis-timeline needs unconstrained overflow to render. */
+    .panel--clip { overflow: hidden; }
 
-    #visualization {
-      min-height: 400px;
-      background: rgba(15, 23, 42, 0.7);
-      border-radius: 8px;
-      border: 1px solid rgba(148, 163, 184, 0.2);
-    }
+    /* ── Timeline ────────────────────────────────────────── */
+    .timeline-body { padding: 1rem; }
 
-    .vis-timeline {
-      border: none !important;
-      background: transparent !important;
-    }
+    #visualization { min-height: 360px; }
 
-    .vis-panel {
-      border: none !important;
-    }
+    .vis-timeline  { border: none !important; background: transparent !important; }
+    .vis-panel     { border: none !important; }
 
     .vis-labelset .vis-label {
-      background: rgba(15, 23, 42, 0.95) !important;
+      background: var(--surface) !important;
       border: none !important;
-      border-right: 1px solid rgba(148, 163, 184, 0.3) !important;
-      color: white !important;
-      font-weight: 500 !important;
+      border-right: 1px solid var(--border) !important;
+      color: var(--text-2) !important;
+      font-family: var(--font-mono) !important;
+      font-size: 0.625rem !important;
+      font-weight: 600 !important;
     }
 
     .vis-item {
-      border-radius: 3px !important;
-      border: 1px solid rgba(148, 163, 184, 0.4) !important;
+      border-radius: 2px !important;
+      border: 1px solid rgba(77,127,255,0.3) !important;
+      background: rgba(77,127,255,0.14) !important;
       box-shadow: none !important;
+      font-family: var(--font-mono) !important;
+      font-size: 0.625rem !important;
+      color: var(--text-2) !important;
     }
 
-    .vis-item:hover {
-      border-color: rgba(148, 163, 184, 0.6) !important;
-    }
+    .vis-item:hover        { border-color: rgba(77,127,255,0.6) !important; }
+    .vis-item.vis-selected { border-color: var(--accent) !important; background: rgba(77,127,255,0.28) !important; }
 
-    .vis-item.vis-selected {
-      box-shadow: 0 0 0 2px #3b82f6 !important;
-    }
-
-    .vis-time-axis {
-      border: none !important;
-      background: rgba(15, 23, 42, 0.8) !important;
-    }
+    .vis-time-axis { border: none !important; background: transparent !important; }
 
     .vis-time-axis .vis-text {
-      color: rgba(255, 255, 255, 0.9) !important;
-      font-size: 0.85rem !important;
+      color: var(--text-2) !important;
+      font-family: var(--font-mono) !important;
+      font-size: 0.6875rem !important;
     }
 
-    .vis-time-axis .vis-grid.vis-minor {
-      border-color: rgba(148, 163, 184, 0.2) !important;
+    .vis-time-axis .vis-grid.vis-minor { border-color: rgba(255,255,255,0.03) !important; }
+    .vis-time-axis .vis-grid.vis-major { border-color: rgba(255,255,255,0.06) !important; }
+
+    /* ── Bottlenecks table ───────────────────────────────── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
     }
 
-    .vis-time-axis .vis-grid.vis-major {
-      border-color: rgba(148, 163, 184, 0.3) !important;
+    .data-table thead th {
+      font-size: 0.5625rem;
+      font-weight: 600;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 0.625rem 1.25rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .data-table thead th:first-child { width: 2.75rem; text-align: center; }
+    .data-table thead th:last-child  { width: 7rem; }
+
+    .data-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.08s ease;
+    }
+
+    .data-table tbody tr:last-child { border-bottom: none; }
+    .data-table tbody tr:hover      { background: rgba(255,255,255,0.025); }
+
+    .data-table tbody td {
+      padding: 0.75rem 1.25rem;
+      vertical-align: middle;
+    }
+
+    /* rank column */
+    .data-table tbody td:first-child {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: var(--text-3);
+    }
+
+    .data-table tbody tr:nth-child(1) td:first-child { color: var(--amber); }
+    .data-table tbody tr:nth-child(2) td:first-child { color: rgba(245,160,32,0.55); }
+    .data-table tbody tr:nth-child(3) td:first-child { color: rgba(245,160,32,0.3); }
+
+    /* top rank left accent */
+    .data-table tbody tr:nth-child(1) {
+      box-shadow: inset 2px 0 0 var(--amber);
+    }
+
+    .target-name {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    .target-path {
+      display: block;
+      font-size: 0.6875rem;
+      color: var(--text-2);
+      margin-top: 0.125rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60vw;
+    }
+
+    .duration-cell {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    /* ── Tooltip ─────────────────────────────────────────── */
+    .hover-tooltip {
+      position: fixed;
+      background: var(--surface-hi);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius);
+      padding: 0.875rem 1rem;
+      min-width: 228px;
+      max-width: 320px;
+      z-index: 1100;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(5px);
+      transition: opacity 0.1s ease, transform 0.1s ease;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .hover-tooltip.visible { opacity: 1; transform: translateY(0); }
+
+    .tip-title {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-1);
+      padding-bottom: 0.625rem;
+      margin-bottom: 0.625rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tip-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+
+    .tip-stat-label {
+      font-size: 0.5rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 0.1875rem;
+    }
+
+    .tip-stat-value {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    .tip-path {
+      margin-top: 0.625rem;
+      padding-top: 0.625rem;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 0.5625rem;
+      color: var(--text-2);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hover-tooltip { transition: none; }
+    }
+
+    @media (max-width: 640px) {
+      .page       { padding: 1rem; }
+      .metric     { min-width: 50%; flex: 0 0 50%; }
     }
   </style>
 </head>
 
 <body>
-  <nav class="navbar navbar-dark">
-    <div class="container">
-      <a class="navbar-brand" href="#">
-        <i class="bi bi-graph-up"></i>
-        &nbsp; Build Visualization
-      </a>
-      <small class="text-light"> Generated by <tt>nv visualize</tt></small>
-    </div>
-  </nav>
+  <header class="site-header">
+    <span class="brand">nv</span>
+    <span class="header-label">Build Report</span>
+  </header>
 
-  <div class="container mt-4">
-    <!-- Summary Statistics -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <h2 class="mb-3">
-          <i class="bi bi-speedometer2"></i>
-          &nbsp; Build Overview
-        </h2>
-      </div>
-      <div class="col-md-2 col-sm-4 col-6 mb-3">
-        <div class="card stat-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-bullseye display-6 text-primary"></i>
-            <h5 class="card-title mt-2">Targets</h5>
-            <h3 id="targets" class="text-primary">{{& targets}}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-2 col-sm-4 col-6 mb-3">
-        <div class="card stat-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-clock display-6 text-secondary"></i>
-            <h5 class="card-title mt-2">Wall Time</h5>
-            <h3 class="text-secondary">{{& wall_time}}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-2 col-sm-4 col-6 mb-3">
-        <div class="card stat-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-cpu display-6 text-success"></i>
-            <h5 class="card-title mt-2">CPU Time</h5>
-            <h3 class="text-success">{{& cpu_time}}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-2 col-sm-4 col-6 mb-3">
-        <div class="card stat-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-speedometer2 display-6 text-info"></i>
-            <h5 class="card-title mt-2">Peak Concurrency</h5>
-            <h3 class="text-info">{{& peak_concurrency}}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-2 col-sm-4 col-6 mb-3">
-        <div class="card stat-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-lightning display-6 text-dark"></i>
-            <h5 class="card-title mt-2">Efficiency</h5>
-            <h3 id="efficiency" class="text-dark">{{& efficiency}}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-2 col-sm-4 col-6 mb-3">
-        <div class="card stat-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-hourglass-split display-6 text-muted"></i>
-            <h5 class="card-title mt-2">Average Time</h5>
-            <h3 class="text-muted">{{& average_time}}</h3>
-          </div>
-        </div>
-      </div>
+  <div class="metrics-rail">
+    <div class="metric">
+      <span class="metric-label">Wall Time</span>
+      <span class="metric-value">{{& wall_time}}</span>
     </div>
-
-    <!-- Build Timeline -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h4 class="mb-0">
-              <i class="bi bi-calendar3"></i>
-              &nbsp; Build Timeline
-            </h4>
-            <small>Hover over timeline items for detailed information</small>
-          </div>
-          <div class="card-body">
-            <div id="visualization"></div>
-          </div>
-        </div>
-      </div>
+    <div class="metric">
+      <span class="metric-label">CPU Time</span>
+      <span class="metric-value">{{& cpu_time}}</span>
     </div>
-
-    <!-- Top Bottlenecks -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h4 class="mb-0">
-              <i class="bi bi-exclamation-triangle"></i>
-              &nbsp; Top Bottlenecks
-            </h4>
-            <small>Slowest Build Targets</small>
-          </div>
-          <div class="card-body">
-            <table class="table table-striped" style="margin-bottom: 0;">
-              <thead>
-                <tr>
-                  <th scope="col" style="width: 3rem;">#</th>
-                  <th scope="col">Target</th>
-                  <th scope="col">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {{#bottlenecks}}
-                <tr>
-                  <th scope="row" style="width: 3rem;">{{rank}}</th>
-                  <td title="{{full_target}}">{{target}}</td>
-                  <td>{{duration}}</td>
-                </tr>
-                {{/bottlenecks}}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <div class="metric">
+      <span class="metric-label">Targets</span>
+      <span class="metric-value">{{& targets}}</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Peak Concurrency</span>
+      <span class="metric-value">{{& peak_concurrency}}</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Efficiency</span>
+      <span class="metric-value">{{& efficiency}}</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Avg Target</span>
+      <span class="metric-value">{{& average_time}}</span>
     </div>
   </div>
 
-  <!-- Hover Tooltip -->
-  <div class="hover-tooltip" id="hover-tooltip">
-    <div class="tooltip-header">
-      <div class="tooltip-icon">
-        <i class="bi bi-gear"></i>
+  <div class="page">
+    <section>
+      <p class="section-label">Build Timeline</p>
+      <div class="panel">
+        <div class="timeline-body">
+          <div id="visualization"></div>
+        </div>
       </div>
-      <div class="tooltip-title" id="tooltip-title"></div>
-    </div>
-    <div class="tooltip-grid" id="tooltip-grid">
-      <!-- Dynamic content -->
-    </div>
-    <div class="tooltip-full-path" id="tooltip-full-path">
-      <div class="tooltip-label">Full Path</div>
-      <div class="tooltip-value" id="tooltip-path-value"></div>
-    </div>
+    </section>
+
+    <section>
+      <p class="section-label">Slowest Targets</p>
+      <div class="panel panel--clip">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Target</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#bottlenecks}}
+            <tr>
+              <td>{{rank}}</td>
+              <td>
+                <span class="target-name">{{target}}</span>
+                <span class="target-path">{{full_target}}</span>
+              </td>
+              <td class="duration-cell">{{duration}}</td>
+            </tr>
+            {{/bottlenecks}}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="hover-tooltip" id="hover-tooltip">
+    <div class="tip-title" id="tooltip-title"></div>
+    <div class="tip-stats" id="tooltip-grid"></div>
+    <div class="tip-path" id="tooltip-path-value"></div>
   </div>
 
   <script>
@@ -501,63 +454,51 @@
     });
     timeline.setGroups(groups);
 
-    const tooltip = document.getElementById('hover-tooltip');
-    const tooltipTitle = document.getElementById('tooltip-title');
-    const tooltipGrid = document.getElementById('tooltip-grid');
-    const tooltipPath = document.getElementById('tooltip-path-value');
+    const tooltip  = document.getElementById('hover-tooltip');
+    const tipTitle = document.getElementById('tooltip-title');
+    const tipGrid  = document.getElementById('tooltip-grid');
+    const tipPath  = document.getElementById('tooltip-path-value');
 
     function formatDuration(seconds) {
       if (seconds < 1) return (seconds * 1000).toFixed(0) + ' ms';
       if (seconds < 60) return seconds.toFixed(2) + ' s';
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = (seconds % 60).toFixed(2);
-      return minutes + ' m ' + remainingSeconds + ' s';
+      const m = Math.floor(seconds / 60);
+      return m + ' m ' + (seconds % 60).toFixed(2) + ' s';
     }
 
     function updateTooltipPosition(event) {
       const rect = tooltip.getBoundingClientRect();
-      let x = event.clientX + 15;
-      let y = event.clientY - 15;
-
-      if (x + rect.width > window.innerWidth) {
-        x = event.clientX - rect.width - 15;
-      }
-      if (y < 0) {
-        y = event.clientY + 25;
-      }
-      if (y + rect.height > window.innerHeight) {
-        y = window.innerHeight - rect.height - 10;
-      }
-
+      let x = event.clientX + 16;
+      let y = event.clientY - 16;
+      if (x + rect.width  > window.innerWidth)  x = event.clientX - rect.width  - 16;
+      if (y < 0)                                 y = event.clientY + 24;
+      if (y + rect.height > window.innerHeight)  y = window.innerHeight - rect.height - 10;
       tooltip.style.left = x + 'px';
-      tooltip.style.top = y + 'px';
+      tooltip.style.top  = y + 'px';
     }
 
     timeline.on('itemover', (properties) => {
       const item = items.get(properties.item);
       if (!item) return;
-
-      const duration = (item.end - item.start) / 1000;
+      const duration      = (item.end - item.start) / 1000;
       const relativeStart = (item.start - {{& min_time}}) / 1000;
-      const relativeEnd = (item.end - {{& min_time}}) / 1000;
-
-      tooltipTitle.textContent = item.content;
-      tooltipPath.textContent = item.target;
-      tooltipGrid.innerHTML = `
-        <div class="tooltip-item">
-          <div class="tooltip-label">Start Time</div>
-          <div class="tooltip-value">${formatDuration(relativeStart)}</div>
+      const relativeEnd   = (item.end   - {{& min_time}}) / 1000;
+      tipTitle.textContent = item.content;
+      tipPath.textContent  = item.target;
+      tipGrid.innerHTML = `
+        <div>
+          <div class="tip-stat-label">Start</div>
+          <div class="tip-stat-value">${formatDuration(relativeStart)}</div>
         </div>
-        <div class="tooltip-item">
-          <div class="tooltip-label">End Time</div>
-          <div class="tooltip-value">${formatDuration(relativeEnd)}</div>
+        <div>
+          <div class="tip-stat-label">End</div>
+          <div class="tip-stat-value">${formatDuration(relativeEnd)}</div>
         </div>
-        <div class="tooltip-item">
-          <div class="tooltip-label">Duration</div>
-          <div class="tooltip-value">${formatDuration(duration)}</div>
+        <div>
+          <div class="tip-stat-label">Duration</div>
+          <div class="tip-stat-value">${formatDuration(duration)}</div>
         </div>
       `;
-
       updateTooltipPosition(properties.event);
       tooltip.classList.add('visible');
     });
@@ -565,9 +506,7 @@
     timeline.on('itemout', () => tooltip.classList.remove('visible'));
 
     document.getElementById('visualization').addEventListener('mousemove', (event) => {
-      if (tooltip.classList.contains('visible')) {
-        updateTooltipPosition(event);
-      }
+      if (tooltip.classList.contains('visible')) updateTooltipPosition(event);
     });
   </script>
 </body>
