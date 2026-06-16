@@ -27,8 +27,8 @@ jobs:
       - name: Setup Swift
         uses: compnerd/gha-setup-swift@main
         with:
-          swift-version: development
-          swift-build: DEVELOPMENT-SNAPSHOT-2025-08-27-a
+          swift-version: swift-6.3.2-release
+          swift-build: 6.3.2-RELEASE
           update-sdk-modules: true
 
       - working-directory: ${{ github.workspace }}/SourceCache/nv
@@ -88,6 +88,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{ github.workspace }}/SourceCache/nv
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.3.2"
 
       - working-directory: ${{ github.workspace }}/SourceCache/nv
         run: |
