@@ -36,8 +36,8 @@ extension Event: Comparable {
   public static func < (_ lhs: Event, _ rhs: Event) -> Bool {
     if lhs.timestamp == rhs.timestamp {
       return switch (lhs.kind, rhs.kind) {
-      case (.end, .start): false
-      case (.start, .end): true
+      case (.end, .start): true
+      case (.start, .end): false
       case (.start, .start), (.end, .end): false
       }
     }
@@ -52,11 +52,13 @@ extension Collection where Element: NinjaLogEntry {
     events.reserveCapacity(self.count * 2)
 
     for entry in self.enumerated() {
+      guard entry.element.start != entry.element.end else { continue }
       events.append(Event(id: entry.offset, target: entry.element.target,
                           kind: .start, timestamp: entry.element.start))
       events.append(Event(id: entry.offset, target: entry.element.target,
                           kind: .end, timestamp: entry.element.end))
     }
+    guard !events.isEmpty else { return ([], []) }
     events.sort()
 
     var lanes: Heap<Int> = Heap()
@@ -103,6 +105,11 @@ internal struct VisualizeCommand: ParsableCommand {
   @OptionGroup
   var command: NV
 
+  private func jsonLiteral(_ string: String) -> String {
+    let data = (try? JSONEncoder().encode(string)) ?? Data()
+    return String(data: data, encoding: .utf8) ?? "\"\""
+  }
+
   private func template() throws -> Mustache {
     guard let url = Bundle.module.url(forResource: "visualization",
                                       withExtension: "html") else {
@@ -128,23 +135,57 @@ internal struct VisualizeCommand: ParsableCommand {
         Duration.UnitsFormatStyle(allowedUnits: [.hours, .minutes, .seconds],
                                   width: .abbreviated)
     var bottlenecks = Array<Dictionary<String, Any>>()
-    // TODO: replace with for-in once InlineArray conforms to Iterable (Swift 6.4)
-    for index in statistics.slowest.indices {
-      guard let task = statistics.slowest[index] else { break }
+    let topTargets = entries.enumerated()
+        .filter { $0.element.start != $0.element.end }
+        .sorted { $0.element.duration > $1.element.duration }
+        .prefix(5)
+    for (rank, (index, entry)) in topTargets.enumerated() {
       bottlenecks.append([
-        "rank": index + 1,
-        "target": URL(fileURLWithPath: task.target).lastPathComponent,
-        "full_target": task.target,
-        "duration": task.duration.formatted(kTimeStyle),
+        "rank": rank + 1,
+        "task_id": index,
+        "target": URL(fileURLWithPath: entry.target).lastPathComponent,
+        "full_target": entry.target,
+        "duration": entry.duration.formatted(kTimeStyle),
       ])
     }
-    try template().render(object: [
+
+    // Collect intervals where exactly one target was building (serial time windows).
+    // These appear as background shading on the timeline, making serialization visible.
+    var events: [(kind: Event.Kind, timestamp: Double)] = []
+    events.reserveCapacity(entries.count * 2)
+    for entry in entries {
+      guard entry.start != entry.end else { continue }
+      events.append((kind: .start, timestamp: entry.start))
+      events.append((kind: .end, timestamp: entry.end))
+    }
+    events.sort { lhs, rhs in
+      lhs.timestamp == rhs.timestamp
+        ? (lhs.kind == .end && rhs.kind == .start)
+        : lhs.timestamp < rhs.timestamp
+    }
+    var stalls = Array<Dictionary<String, Any>>()
+    var concurrency = 0
+    var onset = 0.0
+    for event in events {
+      let previous = concurrency
+      concurrency += event.kind == .start ? 1 : -1
+      if concurrency == 1 { onset = event.timestamp }
+      else if previous == 1 {
+        stalls.append(["start": onset * 1000, "end": event.timestamp * 1000])
+      }
+    }
+    if concurrency == 1 {
+      stalls.append(["start": onset * 1000, "end": statistics.execution.end * 1000])
+    }
+
+    let rendered = try template().render(object: [
       "targets": entries.count,
       "wall_time": statistics.time.wall.formatted(kTimeStyle),
       "cpu_time": statistics.time.cpu.formatted(kTimeStyle),
       "peak_concurrency": statistics.parallelism.peak,
       "efficiency": String(format: "%.2f%%",
                            statistics.parallelism.efficiency * 100.0),
+      "efficiency_pct": statistics.parallelism.efficiency * 100.0,
       "average_time": statistics.stats.average.formatted(kTimeStyle),
       "groups": lanes.enumerated().map { index, lane in
         ["id": lane.id, "label": lane.description, "last": index == lanes.count - 1]
@@ -152,8 +193,8 @@ internal struct VisualizeCommand: ParsableCommand {
       "tasks": tasks.enumerated().map { index, task in
         [
           "id": task.id,
-          "title": task.target,
-          "content": URL(fileURLWithPath: task.target).lastPathComponent,
+          "target_json": jsonLiteral(task.target),
+          "content_json": jsonLiteral(URL(fileURLWithPath: task.target).lastPathComponent),
           "start": task.start * 1000,
           "end": task.end * 1000,
           "group": task.lane,
@@ -163,9 +204,14 @@ internal struct VisualizeCommand: ParsableCommand {
         ]
       },
       "bottlenecks": bottlenecks,
+      "serial_windows": stalls,
       "min_time": statistics.execution.start * 1000,
       "max_time": statistics.execution.end * 1000,
-    ]).data(using: .utf8)?.write(to: temporary, options: .atomic)
+    ])
+    guard let data = rendered.data(using: .utf8) else {
+      throw CocoaError(.fileWriteUnknown)
+    }
+    try data.write(to: temporary, options: .atomic)
 
 #if os(macOS)
     let process = Process()

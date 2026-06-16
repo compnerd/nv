@@ -16,11 +16,11 @@
       --bg:         #090d17;
       --surface:    #0e1422;
       --surface-hi: #141929;
-      --border:     rgba(255,255,255,0.07);
-      --border-hi:  rgba(255,255,255,0.13);
-      --text-1:     #dde1ee;
-      --text-2:     #7880a0;
-      --text-3:     #3f4560;
+      --border:     rgba(255,255,255,0.10);
+      --border-hi:  rgba(255,255,255,0.18);
+      --text-1:     #e4e8f5;
+      --text-2:     #8f98bf;
+      --text-3:     #6470a0;
       --accent:     #4d7fff;
       --accent-dim: rgba(77,127,255,0.15);
       --amber:      #f5a020;
@@ -118,7 +118,22 @@
       line-height: 1.25;
     }
 
-    /* ── Page body ───────────────────────────────────────── */
+    /* Efficiency sparkline bar — encodes the ratio visually so the number
+       has an immediate visual referent ("compared to what?"). */
+    .efficiency-bar-track {
+      height: 2px;
+      background: var(--border-hi);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .efficiency-bar {
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+
+    /* ── Page layout ─────────────────────────────────────── */
     .page {
       max-width: 1440px;
       margin: 0 auto;
@@ -128,15 +143,39 @@
       gap: 2rem;
     }
 
-    /* ── Section label ───────────────────────────────────── */
+    /* ── Section header ──────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 0.625rem;
+    }
+
     .section-label {
       font-size: 0.5625rem;
       font-weight: 600;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--text-3);
-      margin-bottom: 0.625rem;
     }
+
+    .section-hint {
+      font-size: 0.5625rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    /* Key finding — one sentence naming the top bottleneck and serial fraction */
+    .key-finding {
+      font-size: 0.8125rem;
+      color: var(--text-2);
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .key-finding strong { color: var(--amber); font-weight: 600; }
 
     /* ── Panel ───────────────────────────────────────────── */
     .panel {
@@ -149,6 +188,46 @@
        timeline panel — vis-timeline needs unconstrained overflow to render. */
     .panel--clip { overflow: hidden; }
 
+    /* ── Legend ──────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.5625rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .legend-swatch {
+      flex-shrink: 0;
+      width: 12px;
+      height: 8px;
+      border-radius: 1px;
+    }
+
+    .legend-swatch--target {
+      background: rgba(77,127,255,0.20);
+      border: 1px solid rgba(77,127,255,0.45);
+    }
+
+    .legend-swatch--bottleneck {
+      background: rgba(245,160,32,0.22);
+      border: 1px solid rgba(245,160,32,0.75);
+    }
+
+    .legend-swatch--serial {
+      background: rgba(210,60,50,0.14);
+      border-left: 2px solid rgba(210,60,50,0.55);
+    }
+
     /* ── Timeline ────────────────────────────────────────── */
     .timeline-body { padding: 1rem; }
 
@@ -157,28 +236,50 @@
     .vis-timeline  { border: none !important; background: transparent !important; }
     .vis-panel     { border: none !important; }
 
-    .vis-labelset .vis-label {
-      background: var(--surface) !important;
-      border: none !important;
-      border-right: 1px solid var(--border) !important;
-      color: var(--text-2) !important;
-      font-family: var(--font-mono) !important;
-      font-size: 0.625rem !important;
-      font-weight: 600 !important;
-    }
+    /* Collapse the lane-label column — lane identities are arbitrary scheduler
+       slots that carry no information useful to a developer. */
+    .vis-panel.vis-left       { min-width: 0 !important; width: 0 !important; border: none !important; }
+    .vis-labelset .vis-label  { width: 0 !important; padding: 0 !important; overflow: hidden !important; }
 
     .vis-item {
       border-radius: 2px !important;
-      border: 1px solid rgba(77,127,255,0.3) !important;
-      background: rgba(77,127,255,0.14) !important;
+      border: 1px solid rgba(77,127,255,0.45) !important;
+      background: rgba(77,127,255,0.20) !important;
       box-shadow: none !important;
       font-family: var(--font-mono) !important;
       font-size: 0.625rem !important;
-      color: var(--text-2) !important;
+      color: var(--text-1) !important;
     }
 
-    .vis-item:hover        { border-color: rgba(77,127,255,0.6) !important; }
-    .vis-item.vis-selected { border-color: var(--accent) !important; background: rgba(77,127,255,0.28) !important; }
+    .vis-item:hover        { border-color: rgba(77,127,255,0.75) !important; background: rgba(77,127,255,0.28) !important; }
+    .vis-item.vis-selected { border-color: var(--accent) !important; background: rgba(77,127,255,0.38) !important; }
+
+    /* Serial stall windows — crimson, not amber, so it reads separately from
+       the amber bottleneck bars that often sit inside these windows. */
+    .vis-item.vis-background.serial-window {
+      background: rgba(210,60,50,0.07) !important;
+      border-left: 2px solid rgba(210,60,50,0.38) !important;
+    }
+
+    /* Bottleneck items — amber by rank, matching the table accents.
+       Rank 1 is fully saturated; ranks 2–5 fade so severity is legible at a glance. */
+    .vis-item.bottleneck-rank-1 {
+      background: rgba(245,160,32,0.28) !important;
+      border-color: rgba(245,160,32,0.85) !important;
+      color: var(--text-1) !important;
+    }
+    .vis-item.bottleneck-rank-2 {
+      background: rgba(245,160,32,0.18) !important;
+      border-color: rgba(245,160,32,0.58) !important;
+      color: var(--text-1) !important;
+    }
+    .vis-item.bottleneck-rank-3,
+    .vis-item.bottleneck-rank-4,
+    .vis-item.bottleneck-rank-5 {
+      background: rgba(245,160,32,0.11) !important;
+      border-color: rgba(245,160,32,0.36) !important;
+      color: var(--text-1) !important;
+    }
 
     .vis-time-axis { border: none !important; background: transparent !important; }
 
@@ -215,10 +316,13 @@
     .data-table tbody tr {
       border-bottom: 1px solid var(--border);
       transition: background 0.08s ease;
+      cursor: pointer;
     }
 
     .data-table tbody tr:last-child { border-bottom: none; }
     .data-table tbody tr:hover      { background: rgba(255,255,255,0.025); }
+    .data-table tbody tr.active,
+    .data-table tbody tr.active:hover { background: var(--accent-dim); }
 
     .data-table tbody td {
       padding: 0.75rem 1.25rem;
@@ -236,12 +340,10 @@
 
     .data-table tbody tr:nth-child(1) td:first-child { color: var(--amber); }
     .data-table tbody tr:nth-child(2) td:first-child { color: rgba(245,160,32,0.55); }
-    .data-table tbody tr:nth-child(3) td:first-child { color: rgba(245,160,32,0.3); }
+    .data-table tbody tr:nth-child(3) td:first-child { color: rgba(245,160,32,0.30); }
 
-    /* top rank left accent */
-    .data-table tbody tr:nth-child(1) {
-      box-shadow: inset 2px 0 0 var(--amber);
-    }
+    /* top-rank left accent */
+    .data-table tbody tr:nth-child(1) { box-shadow: inset 2px 0 0 var(--amber); }
 
     .target-name {
       display: block;
@@ -262,11 +364,28 @@
       max-width: 60vw;
     }
 
+    .target-meta {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.5625rem;
+      font-weight: 500;
+      color: var(--text-3);
+      margin-top: 0.125rem;
+    }
+
     .duration-cell {
       font-family: var(--font-mono);
       font-size: 0.75rem;
       font-weight: 600;
       color: var(--text-1);
+    }
+
+    .duration-pct {
+      display: block;
+      font-size: 0.5625rem;
+      font-weight: 500;
+      color: var(--text-3);
+      margin-top: 0.125rem;
     }
 
     /* ── Tooltip ─────────────────────────────────────────── */
@@ -339,8 +458,8 @@
     }
 
     @media (max-width: 640px) {
-      .page       { padding: 1rem; }
-      .metric     { min-width: 50%; flex: 0 0 50%; }
+      .page   { padding: 1rem; }
+      .metric { min-width: 50%; flex: 0 0 50%; }
     }
   </style>
 </head>
@@ -371,6 +490,9 @@
     <div class="metric">
       <span class="metric-label">Efficiency</span>
       <span class="metric-value">{{& efficiency}}</span>
+      <div class="efficiency-bar-track">
+        <div class="efficiency-bar" style="width: {{& efficiency_pct}}%"></div>
+      </div>
     </div>
     <div class="metric">
       <span class="metric-label">Avg Target</span>
@@ -380,7 +502,21 @@
 
   <div class="page">
     <section>
-      <p class="section-label">Build Timeline</p>
+      <div class="section-header">
+        <p class="section-label">Build Timeline</p>
+        <div class="legend">
+          <span class="legend-item">
+            <span class="legend-swatch legend-swatch--target"></span>target
+          </span>
+          <span class="legend-item">
+            <span class="legend-swatch legend-swatch--bottleneck"></span>bottleneck
+          </span>
+          <span class="legend-item">
+            <span class="legend-swatch legend-swatch--serial"></span>serial window
+          </span>
+        </div>
+      </div>
+      <p class="key-finding" id="key-finding"></p>
       <div class="panel">
         <div class="timeline-body">
           <div id="visualization"></div>
@@ -389,25 +525,32 @@
     </section>
 
     <section>
-      <p class="section-label">Slowest Targets</p>
+      <div class="section-header">
+        <p class="section-label">Slowest Targets</p>
+        <span class="section-hint">click row to locate in timeline</span>
+      </div>
       <div class="panel panel--clip">
         <table class="data-table">
           <thead>
             <tr>
-              <th>#</th>
+              <th></th>
               <th>Target</th>
               <th>Duration</th>
             </tr>
           </thead>
           <tbody>
             {{#bottlenecks}}
-            <tr>
+            <tr data-task-id="{{task_id}}">
               <td>{{rank}}</td>
               <td>
                 <span class="target-name">{{target}}</span>
                 <span class="target-path">{{full_target}}</span>
+                <span class="target-meta"></span>
               </td>
-              <td class="duration-cell">{{duration}}</td>
+              <td class="duration-cell">
+                <span>{{duration}}</span>
+                <span class="duration-pct"></span>
+              </td>
             </tr>
             {{/bottlenecks}}
           </tbody>
@@ -419,21 +562,43 @@
   <div class="hover-tooltip" id="hover-tooltip">
     <div class="tip-title" id="tooltip-title"></div>
     <div class="tip-stats" id="tooltip-grid"></div>
-    <div class="tip-path" id="tooltip-path-value"></div>
+    <div class="tip-path" id="tooltip-path"></div>
   </div>
 
   <script>
-    const base = new Date({{& min_time}});
+    const buildStart = new Date({{& min_time}});
+    const wallMs = {{& max_time}} - {{& min_time}};
 
     const groups = new vis.DataSet([
-      {{#groups}}{ id: {{id}}, content: '{{label}}', order: {{id}} }{{^last}},
+      {{#groups}}{ id: {{id}}, content: '', order: {{id}} }{{^last}},
       {{/last}}{{/groups}}
     ]);
 
     const items = new vis.DataSet([
-      {{#tasks}}{ id: {{id}}, content: '{{content}}', title: '{{title}}', start: {{start}}, end: {{end}}, group: {{group}}, target: '{{target}}', duration: {{duration}} }{{^last}},
+      {{#tasks}}{ id: {{id}}, content: {{& content_json}}, title: {{& target_json}}, start: {{start}}, end: {{end}}, group: {{group}}, target: {{& target_json}}, duration: {{duration}} }{{^last}},
       {{/last}}{{/tasks}}
     ]);
+
+    // Serial stall windows (concurrency == 1): injected as background items so
+    // they shade the regions where the build was forced to run single-threaded.
+    const stalls = [
+      {{#serial_windows}}{ start: {{start}}, end: {{end}} },
+      {{/serial_windows}}
+    ];
+    for (const stall of stalls) {
+      items.add({ type: 'background', className: 'serial-window', start: stall.start, end: stall.end });
+    }
+
+    // Amber-highlight bottleneck items so severity is visible in the timeline
+    // without any interaction — rank 1 is fully saturated, 2–5 fade.
+    const bottleneckRanks = [
+      {{#bottlenecks}}{ taskId: {{task_id}}, rank: {{rank}} },
+      {{/bottlenecks}}
+    ];
+    bottleneckRanks.forEach(({ taskId, rank }) => {
+      const task = items.get(taskId);
+      if (task) items.update({ id: taskId, className: 'bottleneck-rank-' + rank });
+    });
 
     const timeline = new vis.Timeline(document.getElementById('visualization'), items, {
       horizontalScroll: true,
@@ -444,7 +609,7 @@
       showMinorLabels: true,
       stack: false,
       format: {
-        minorLabels: (date) => (date - base) / 1000 + ' s'
+        minorLabels: date => (date - buildStart) / 1000 + ' s'
       },
       tooltip: {
         followMouse: false,
@@ -454,11 +619,6 @@
     });
     timeline.setGroups(groups);
 
-    const tooltip  = document.getElementById('hover-tooltip');
-    const tipTitle = document.getElementById('tooltip-title');
-    const tipGrid  = document.getElementById('tooltip-grid');
-    const tipPath  = document.getElementById('tooltip-path-value');
-
     function formatDuration(seconds) {
       if (seconds < 1) return (seconds * 1000).toFixed(0) + ' ms';
       if (seconds < 60) return seconds.toFixed(2) + ' s';
@@ -466,47 +626,99 @@
       return m + ' m ' + (seconds % 60).toFixed(2) + ' s';
     }
 
-    function updateTooltipPosition(event) {
+    function formatOffset(ms) {
+      const s = ms / 1000;
+      if (s < 60) return 'T+' + s.toFixed(1) + ' s';
+      const m = Math.floor(s / 60);
+      return 'T+' + m + ' m ' + (s % 60).toFixed(0) + ' s';
+    }
+
+    // Augment each bottleneck row with start-time offset and % of wall duration,
+    // cross-referenced from the items DataSet by task ID.
+    document.querySelectorAll('.data-table tbody tr[data-task-id]').forEach(row => {
+      const task = items.get(parseInt(row.dataset.taskId));
+      if (!task) return;
+      row.querySelector('.target-meta').textContent = formatOffset(task.start - {{& min_time}});
+      row.querySelector('.duration-pct').textContent =
+        (wallMs > 0 ? (((task.end - task.start) / wallMs) * 100).toFixed(1) : '0.0') + '% of wall';
+    });
+
+    // Key finding — one sentence naming the top bottleneck and serial fraction.
+    // Serial time is summed from the stall intervals already in memory.
+    const keyFinding = document.getElementById('key-finding');
+    if (keyFinding && bottleneckRanks.length > 0) {
+      const primary = bottleneckRanks[0];
+      const task = items.get(primary.taskId);
+      if (task) {
+        const serialMs = stalls.reduce((total, stall) => total + (stall.end - stall.start), 0);
+        const serialPct = wallMs > 0 ? (serialMs / wallMs * 100).toFixed(1) : '0.0';
+        const filename = task.target.split('/').pop().split('\\').pop();
+        const topPct = wallMs > 0 ? ((task.end - task.start) / wallMs * 100).toFixed(1) : '0.0';
+        const strong = document.createElement('strong');
+        strong.textContent = filename;
+        let suffix = ' — ' + topPct + '% of wall time.';
+        if (parseFloat(serialPct) > 3)
+          suffix += ' ' + serialPct + '% of the build ran serially; extra cores will not recover it.';
+        keyFinding.replaceChildren('Top bottleneck: ', strong, suffix);
+      }
+    }
+
+    // Click a bottleneck row → mark it active and scroll the timeline to that item.
+    document.querySelectorAll('.data-table tbody tr[data-task-id]').forEach(row => {
+      row.addEventListener('click', () => {
+        document.querySelectorAll('.data-table tbody tr').forEach(r => r.classList.remove('active'));
+        row.classList.add('active');
+        const taskId = parseInt(row.dataset.taskId);
+        timeline.setSelection([taskId]);
+        timeline.focus([taskId], { animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
+      });
+    });
+
+    const tooltip      = document.getElementById('hover-tooltip');
+    const tooltipTitle = document.getElementById('tooltip-title');
+    const tooltipGrid  = document.getElementById('tooltip-grid');
+    const tooltipPath  = document.getElementById('tooltip-path');
+
+    function updateTooltipPosition(e) {
       const rect = tooltip.getBoundingClientRect();
-      let x = event.clientX + 16;
-      let y = event.clientY - 16;
-      if (x + rect.width  > window.innerWidth)  x = event.clientX - rect.width  - 16;
-      if (y < 0)                                 y = event.clientY + 24;
+      let x = e.clientX + 16;
+      let y = e.clientY - 16;
+      if (x + rect.width  > window.innerWidth)  x = e.clientX - rect.width - 16;
+      if (y < 0)                                 y = e.clientY + 24;
       if (y + rect.height > window.innerHeight)  y = window.innerHeight - rect.height - 10;
       tooltip.style.left = x + 'px';
       tooltip.style.top  = y + 'px';
     }
 
-    timeline.on('itemover', (properties) => {
-      const item = items.get(properties.item);
-      if (!item) return;
-      const duration      = (item.end - item.start) / 1000;
-      const relativeStart = (item.start - {{& min_time}}) / 1000;
-      const relativeEnd   = (item.end   - {{& min_time}}) / 1000;
-      tipTitle.textContent = item.content;
-      tipPath.textContent  = item.target;
-      tipGrid.innerHTML = `
+    timeline.on('itemover', props => {
+      const item = items.get(props.item);
+      if (!item || item.type === 'background') return;
+      const start = (item.start - {{& min_time}}) / 1000;
+      const end   = (item.end   - {{& min_time}}) / 1000;
+      tooltipTitle.textContent = item.content;
+      tooltipPath.textContent  = item.target;
+      tooltipGrid.innerHTML = `
         <div>
           <div class="tip-stat-label">Start</div>
-          <div class="tip-stat-value">${formatDuration(relativeStart)}</div>
+          <div class="tip-stat-value">${formatDuration(start)}</div>
         </div>
         <div>
           <div class="tip-stat-label">End</div>
-          <div class="tip-stat-value">${formatDuration(relativeEnd)}</div>
+          <div class="tip-stat-value">${formatDuration(end)}</div>
         </div>
         <div>
           <div class="tip-stat-label">Duration</div>
-          <div class="tip-stat-value">${formatDuration(duration)}</div>
+          <div class="tip-stat-value">${formatDuration((item.end - item.start) / 1000)}</div>
         </div>
       `;
-      updateTooltipPosition(properties.event);
+      updateTooltipPosition(props.event);
       tooltip.classList.add('visible');
     });
 
     timeline.on('itemout', () => tooltip.classList.remove('visible'));
 
-    document.getElementById('visualization').addEventListener('mousemove', (event) => {
-      if (tooltip.classList.contains('visible')) updateTooltipPosition(event);
+    document.getElementById('visualization').addEventListener('mousemove', e => {
+      if (tooltip.classList.contains('visible')) updateTooltipPosition(e);
     });
   </script>
 </body>
